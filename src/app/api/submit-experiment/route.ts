@@ -9,21 +9,50 @@ type Trial = {
   reactionTimeMs: number;
 };
 
-function formatMessage(participantId: string, trials: Trial[]) {
+const PX_PER_CM = 96 / 2.54;
+
+function pxToCm(px: number) {
+  return (px / PX_PER_CM).toFixed(2);
+}
+
+function formatSignedCm(px: number) {
+  const cm = px / PX_PER_CM;
+  const sign = cm >= 0 ? "+" : "";
+  return `${sign}${cm.toFixed(2)}cm`;
+}
+
+function formatPhase(
+  label: string,
+  phaseTrials: Trial[],
+): string[] {
+  if (phaseTrials.length === 0) return [];
+
+  const perfectCm = pxToCm(phaseTrials[0].actualLengthPx);
   const lines = [
-    `Müller-Lyer submission — ${participantId}`,
-    `Submitted: ${new Date().toISOString()}`,
-    "",
+    `${label} | Perfect value : ${perfectCm}cm`,
+    `${phaseTrials.length} entries`,
   ];
 
-  for (const t of trials) {
-    const label = t.trialType === "outsideToInside" ? "O→I" : "I→O";
+  phaseTrials.forEach((t, i) => {
     lines.push(
-      `#${t.trialNumber} [${label}] chosen=${t.chosenLengthPx}px actual=${t.actualLengthPx}px error=${t.errorPx}px rt=${t.reactionTimeMs}ms`,
+      `Submission ${i + 1} : ${pxToCm(t.chosenLengthPx)}cm, error ${formatSignedCm(t.errorPx)}`,
     );
-  }
+  });
 
-  return lines.join("\n");
+  return lines;
+}
+
+function formatMessage(participantId: string, trials: Trial[]) {
+  const phase1 = trials.filter((t) => t.trialType === "outsideToInside");
+  const phase2 = trials.filter((t) => t.trialType === "insideToOutside");
+
+  const lines = [`Entry - Muller Lyer Experiment ${participantId}`, ""];
+
+  lines.push(...formatPhase("Phase 1 : Outside to Inside", phase1));
+  lines.push("");
+  lines.push(...formatPhase("Phase 2 : Inside to Outside", phase2));
+
+  return lines.join("\n").trim();
 }
 
 export async function POST(request: NextRequest) {
