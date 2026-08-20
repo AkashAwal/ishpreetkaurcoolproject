@@ -9,7 +9,10 @@ type Trial = {
   reactionTimeMs: number;
 };
 
-const PX_PER_CM = 96 / 2.54;
+// Calibrated to the actual test device: the reference line (566.93px)
+// measured 12.5cm with a physical ruler on screen, rather than the
+// generic 96dpi CSS-pixel assumption (which would read ~15cm).
+const PX_PER_CM = 566.93 / 12.5;
 
 function pxToCm(px: number) {
   return (px / PX_PER_CM).toFixed(2);
