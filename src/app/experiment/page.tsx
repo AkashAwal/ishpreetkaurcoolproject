@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const LEFT_WIDTH_PX = 791.15;
@@ -141,9 +141,8 @@ function ExperimentContent() {
     "increase" | "decrease"
   >(() => lockedDirectionForType(trialTypeForCount(0)));
   const [submittedToTelegram, setSubmittedToTelegram] = useState(false);
-  const [viewportWidth, setViewportWidth] = useState<number | null>(() =>
-    typeof window === "undefined" ? null : window.innerWidth,
-  );
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const trialType: Trial["trialType"] = trialTypeForCount(trials.length);
   const trialInType =
@@ -158,9 +157,7 @@ function ExperimentContent() {
   const referenceWidthPx = referenceWidthPxForType(trialType);
   const apparatusWidthPx = LEFT_WIDTH_PX + referenceWidthPx - CONTACT_OVERLAP_PX;
   const apparatusScale =
-    viewportWidth === null
-      ? 1
-      : Math.min(1, (viewportWidth - 32) / apparatusWidthPx);
+    containerWidth === null ? 1 : Math.min(1, containerWidth / apparatusWidthPx);
 
   const chosenLengthPx = (360 - leftVertexX) * (LEFT_WIDTH_PX / 400);
   const actualLengthPx = referenceWidthPx;
@@ -176,12 +173,14 @@ function ExperimentContent() {
   }, [router]);
 
   useEffect(() => {
-    function updateViewportWidth() {
-      setViewportWidth(window.innerWidth);
-    }
-    window.addEventListener("resize", updateViewportWidth);
-    return () => window.removeEventListener("resize", updateViewportWidth);
-  }, []);
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      setContainerWidth(entries[0].contentRect.width);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [participantId]);
 
   useEffect(() => {
     if (!popup) return;
@@ -267,33 +266,35 @@ function ExperimentContent() {
         {trialType === "outsideToInside" ? "Outside to Inside" : "Inside to Outside"}
       </p>
 
-      <div
-        style={{
-          width: apparatusWidthPx * apparatusScale,
-          height: APPARATUS_HEIGHT_PX * apparatusScale,
-        }}
-      >
+      <div ref={containerRef} className="flex w-full justify-center">
         <div
-          className="flex flex-row items-center"
           style={{
-            width: apparatusWidthPx,
-            transform: `scale(${apparatusScale})`,
-            transformOrigin: "top left",
+            width: apparatusWidthPx * apparatusScale,
+            height: APPARATUS_HEIGHT_PX * apparatusScale,
           }}
         >
-          <MullerLyerLine
-            leftVertexX={leftVertexX}
-            showRightArrow={false}
-            outward={adjustableOutward}
-            widthPx={LEFT_WIDTH_PX}
-          />
-          <div style={{ marginLeft: -CONTACT_OVERLAP_PX }}>
+          <div
+            className="flex flex-row items-center"
+            style={{
+              width: apparatusWidthPx,
+              transform: `scale(${apparatusScale})`,
+              transformOrigin: "top left",
+            }}
+          >
             <MullerLyerLine
-              leftVertexX={0}
-              rightVertexX={400}
-              outward={referenceOutward}
-              widthPx={referenceWidthPx}
+              leftVertexX={leftVertexX}
+              showRightArrow={false}
+              outward={adjustableOutward}
+              widthPx={LEFT_WIDTH_PX}
             />
+            <div style={{ marginLeft: -CONTACT_OVERLAP_PX }}>
+              <MullerLyerLine
+                leftVertexX={0}
+                rightVertexX={400}
+                outward={referenceOutward}
+                widthPx={referenceWidthPx}
+              />
+            </div>
           </div>
         </div>
       </div>
