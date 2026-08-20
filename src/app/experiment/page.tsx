@@ -4,12 +4,14 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const LEFT_WIDTH_PX = 791.15;
-const RIGHT_WIDTH_PX = 558.46;
+const REFERENCE_WIDTH_PX_BY_TYPE = {
+  outsideToInside: 558.46,
+  insideToOutside: 382.5,
+};
 const CONTACT_OVERLAP_PX = 79.12;
-const APPARATUS_WIDTH_PX = LEFT_WIDTH_PX + RIGHT_WIDTH_PX - CONTACT_OVERLAP_PX;
 const APPARATUS_HEIGHT_PX = LEFT_WIDTH_PX / 4;
-const SLIDER_MIN = 32;
-const SLIDER_MAX = 328;
+const SLIDER_MIN = 60;
+const SLIDER_MAX = 235;
 const TRIALS_PER_TYPE = 10;
 const TOTAL_TRIALS = TRIALS_PER_TYPE * 2;
 
@@ -17,6 +19,12 @@ function trialTypeForCount(
   count: number,
 ): "outsideToInside" | "insideToOutside" {
   return count < TRIALS_PER_TYPE ? "outsideToInside" : "insideToOutside";
+}
+
+function referenceWidthPxForType(
+  type: "outsideToInside" | "insideToOutside",
+) {
+  return REFERENCE_WIDTH_PX_BY_TYPE[type];
 }
 
 function startingVertexXForType(
@@ -36,7 +44,7 @@ function MullerLyerLine({
   rightVertexX = 360,
   showRightArrow = true,
   outward = false,
-  widthPx = RIGHT_WIDTH_PX,
+  widthPx = LEFT_WIDTH_PX,
 }: {
   leftVertexX?: number;
   rightVertexX?: number;
@@ -132,7 +140,8 @@ function ExperimentContent() {
   const [lockedDirection, setLockedDirection] = useState<
     "increase" | "decrease"
   >(() => lockedDirectionForType(trialTypeForCount(0)));
-  const [apparatusScale, setApparatusScale] = useState(1);
+  const [availableWidth, setAvailableWidth] = useState<number | null>(null);
+  const [submittedToTelegram, setSubmittedToTelegram] = useState(false);
 
   const trialType: Trial["trialType"] = trialTypeForCount(trials.length);
   const trialInType =
@@ -144,8 +153,13 @@ function ExperimentContent() {
   const adjustableOutward = trialType === "outsideToInside";
   const referenceOutward = trialType === "insideToOutside";
 
+  const referenceWidthPx = referenceWidthPxForType(trialType);
+  const apparatusWidthPx = LEFT_WIDTH_PX + referenceWidthPx - CONTACT_OVERLAP_PX;
+  const apparatusScale =
+    availableWidth === null ? 1 : Math.min(1, availableWidth / apparatusWidthPx);
+
   const chosenLengthPx = (360 - leftVertexX) * (LEFT_WIDTH_PX / 400);
-  const actualLengthPx = RIGHT_WIDTH_PX;
+  const actualLengthPx = referenceWidthPx;
 
   useEffect(() => {
     const started = sessionStorage.getItem("mullerLyerSessionStarted");
@@ -158,13 +172,12 @@ function ExperimentContent() {
   }, [router]);
 
   useEffect(() => {
-    function updateScale() {
-      const available = window.innerWidth - 32;
-      setApparatusScale(Math.min(1, available / APPARATUS_WIDTH_PX));
+    function updateAvailableWidth() {
+      setAvailableWidth(window.innerWidth - 32);
     }
-    updateScale();
-    window.addEventListener("resize", updateScale);
-    return () => window.removeEventListener("resize", updateScale);
+    updateAvailableWidth();
+    window.addEventListener("resize", updateAvailableWidth);
+    return () => window.removeEventListener("resize", updateAvailableWidth);
   }, []);
 
   useEffect(() => {
@@ -172,6 +185,16 @@ function ExperimentContent() {
     const timeout = setTimeout(() => setPopup(null), 2200);
     return () => clearTimeout(timeout);
   }, [popup]);
+
+  useEffect(() => {
+    if (!isComplete || !participantId || submittedToTelegram) return;
+    setSubmittedToTelegram(true);
+    fetch("/api/submit-experiment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ participantId, trials }),
+    }).catch(() => {});
+  }, [isComplete, participantId, submittedToTelegram, trials]);
 
   function handleSubmit() {
     if (isComplete || !participantId) return;
@@ -243,14 +266,14 @@ function ExperimentContent() {
 
       <div
         style={{
-          width: APPARATUS_WIDTH_PX * apparatusScale,
+          width: apparatusWidthPx * apparatusScale,
           height: APPARATUS_HEIGHT_PX * apparatusScale,
         }}
       >
         <div
           className="flex flex-row items-center"
           style={{
-            width: APPARATUS_WIDTH_PX,
+            width: apparatusWidthPx,
             transform: `scale(${apparatusScale})`,
             transformOrigin: "top left",
           }}
@@ -266,7 +289,7 @@ function ExperimentContent() {
               leftVertexX={0}
               rightVertexX={400}
               outward={referenceOutward}
-              widthPx={RIGHT_WIDTH_PX}
+              widthPx={referenceWidthPx}
             />
           </div>
         </div>
