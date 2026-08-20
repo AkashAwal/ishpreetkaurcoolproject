@@ -271,7 +271,6 @@ function ExperimentContent() {
         style={{
           width: apparatusWidthPx * apparatusScale,
           height: APPARATUS_HEIGHT_PX * apparatusScale,
-          overflow: "hidden",
         }}
       >
         <div
