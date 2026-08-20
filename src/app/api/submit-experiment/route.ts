@@ -29,8 +29,12 @@ function formatPhase(
 
   const perfectCm = pxToCm(phaseTrials[0].actualLengthPx);
   const lines = [
-    `${label} | Perfect value : ${perfectCm}cm`,
+    `${label}`,
+    "",
+    `Perfect value : ${perfectCm}cm`,
+    "",
     `${phaseTrials.length} entries`,
+    "",
   ];
 
   phaseTrials.forEach((t, i) => {
@@ -46,7 +50,11 @@ function formatMessage(participantId: string, trials: Trial[]) {
   const phase1 = trials.filter((t) => t.trialType === "outsideToInside");
   const phase2 = trials.filter((t) => t.trialType === "insideToOutside");
 
-  const lines = [`Entry - Muller Lyer Experiment ${participantId}`, ""];
+  const lines = [
+    "Entry - Muller Lyer Experiment",
+    `Name : ${participantId}`,
+    "",
+  ];
 
   lines.push(...formatPhase("Phase 1 : Outside to Inside", phase1));
   lines.push("");
