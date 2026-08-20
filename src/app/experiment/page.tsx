@@ -141,6 +141,9 @@ function ExperimentContent() {
     "increase" | "decrease"
   >(() => lockedDirectionForType(trialTypeForCount(0)));
   const [submittedToTelegram, setSubmittedToTelegram] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState<number | null>(() =>
+    typeof window === "undefined" ? null : window.innerWidth,
+  );
 
   const trialType: Trial["trialType"] = trialTypeForCount(trials.length);
   const trialInType =
@@ -154,7 +157,10 @@ function ExperimentContent() {
 
   const referenceWidthPx = referenceWidthPxForType(trialType);
   const apparatusWidthPx = LEFT_WIDTH_PX + referenceWidthPx - CONTACT_OVERLAP_PX;
-  const apparatusScaleExpr = `min(1, calc((100vw - 32px) / ${apparatusWidthPx}px))`;
+  const apparatusScale =
+    viewportWidth === null
+      ? 1
+      : Math.min(1, (viewportWidth - 32) / apparatusWidthPx);
 
   const chosenLengthPx = (360 - leftVertexX) * (LEFT_WIDTH_PX / 400);
   const actualLengthPx = referenceWidthPx;
@@ -168,6 +174,14 @@ function ExperimentContent() {
     }
     setParticipantId(name);
   }, [router]);
+
+  useEffect(() => {
+    function updateViewportWidth() {
+      setViewportWidth(window.innerWidth);
+    }
+    window.addEventListener("resize", updateViewportWidth);
+    return () => window.removeEventListener("resize", updateViewportWidth);
+  }, []);
 
   useEffect(() => {
     if (!popup) return;
@@ -254,20 +268,17 @@ function ExperimentContent() {
       </p>
 
       <div
-        style={
-          {
-            "--apparatus-scale": apparatusScaleExpr,
-            width: `calc(${apparatusWidthPx}px * var(--apparatus-scale))`,
-            height: `calc(${APPARATUS_HEIGHT_PX}px * var(--apparatus-scale))`,
-            overflow: "hidden",
-          } as React.CSSProperties
-        }
+        style={{
+          width: apparatusWidthPx * apparatusScale,
+          height: APPARATUS_HEIGHT_PX * apparatusScale,
+          overflow: "hidden",
+        }}
       >
         <div
           className="flex flex-row items-center"
           style={{
             width: apparatusWidthPx,
-            transform: "scale(var(--apparatus-scale))",
+            transform: `scale(${apparatusScale})`,
             transformOrigin: "top left",
           }}
         >
