@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 
 const LEFT_WIDTH_PX = 791.15;
 const REFERENCE_WIDTH_PX_BY_TYPE = {
-  outsideToInside: 558.46,
-  insideToOutside: 382.5,
+  outsideToInside: 566.93,
+  insideToOutside: 566.93,
 };
 const CONTACT_OVERLAP_PX = 79.12;
 const APPARATUS_HEIGHT_PX = LEFT_WIDTH_PX / 4;
@@ -140,7 +140,6 @@ function ExperimentContent() {
   const [lockedDirection, setLockedDirection] = useState<
     "increase" | "decrease"
   >(() => lockedDirectionForType(trialTypeForCount(0)));
-  const [availableWidth, setAvailableWidth] = useState<number | null>(null);
   const [submittedToTelegram, setSubmittedToTelegram] = useState(false);
 
   const trialType: Trial["trialType"] = trialTypeForCount(trials.length);
@@ -155,8 +154,7 @@ function ExperimentContent() {
 
   const referenceWidthPx = referenceWidthPxForType(trialType);
   const apparatusWidthPx = LEFT_WIDTH_PX + referenceWidthPx - CONTACT_OVERLAP_PX;
-  const apparatusScale =
-    availableWidth === null ? 1 : Math.min(1, availableWidth / apparatusWidthPx);
+  const apparatusScaleExpr = `min(1, calc((100vw - 32px) / ${apparatusWidthPx}px))`;
 
   const chosenLengthPx = (360 - leftVertexX) * (LEFT_WIDTH_PX / 400);
   const actualLengthPx = referenceWidthPx;
@@ -170,15 +168,6 @@ function ExperimentContent() {
     }
     setParticipantId(name);
   }, [router]);
-
-  useEffect(() => {
-    function updateAvailableWidth() {
-      setAvailableWidth(window.innerWidth - 32);
-    }
-    updateAvailableWidth();
-    window.addEventListener("resize", updateAvailableWidth);
-    return () => window.removeEventListener("resize", updateAvailableWidth);
-  }, []);
 
   useEffect(() => {
     if (!popup) return;
@@ -265,16 +254,20 @@ function ExperimentContent() {
       </p>
 
       <div
-        style={{
-          width: apparatusWidthPx * apparatusScale,
-          height: APPARATUS_HEIGHT_PX * apparatusScale,
-        }}
+        style={
+          {
+            "--apparatus-scale": apparatusScaleExpr,
+            width: `calc(${apparatusWidthPx}px * var(--apparatus-scale))`,
+            height: `calc(${APPARATUS_HEIGHT_PX}px * var(--apparatus-scale))`,
+            overflow: "hidden",
+          } as React.CSSProperties
+        }
       >
         <div
           className="flex flex-row items-center"
           style={{
             width: apparatusWidthPx,
-            transform: `scale(${apparatusScale})`,
+            transform: "scale(var(--apparatus-scale))",
             transformOrigin: "top left",
           }}
         >
